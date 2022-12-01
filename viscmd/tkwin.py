@@ -11,6 +11,8 @@ from viscmd.cmd import Argument, ArgValue, Command, load_command
 from viscmd import xterm
 from viscmd import type
 
+from .config import config
+
 _TITLE = 'Visual Command'
 _ICON = '/usr/share/icons/viscmd.png'
 
@@ -158,7 +160,7 @@ class MainWindow:
 
     @staticmethod
     def load(name):
-        main_cmd = load_command(name)
+        main_cmd = load_command(name, config.lang_prefer)
         # todo interact when fail to load
         return main_cmd
 

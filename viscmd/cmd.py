@@ -1,6 +1,9 @@
-
+import fnmatch
+import glob
 import json
 import os
+import re
+import subprocess
 from collections import OrderedDict
 
 from .config import config
@@ -123,28 +126,122 @@ class Command:
         self.values[av.ad].pop(av, None)
 
 
-def load_command(name: str):
-    basename = name.split()[0]
-    filename = f'{basename}.json'
-    path_found = ''
-    for d in [config.cmd_dir_user, config.cmd_dir_sys]:
-        for lang in [config.lang_prefer, config.lang_alt]:
-            path = os.path.join(d, lang, filename)
-            if os.path.exists(path):
-                path_found = path
+_version_pattern_3 = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+_version_pattern_2 = re.compile(r"(\d+)\.(\d+)")
+
+
+def version_sort_key(s: str):
+    m = _version_pattern_3.match(s)
+    if m:
+        return int(m.group(1)) * 1000000 + int(m.group(2)) * 1000 + int(m.group(3))
+    m = _version_pattern_2.match(s)
+    if m:
+        return int(m.group(1)) * 1000000 + int(m.group(2)) * 1000
+    else:
+        raise
+
+
+# https://stackoverflow.com/questions/23681948/get-index-of-closest-value-with-binary-search
+# by Yaguang
+def binarySearch(data, val):
+    lo, hi = 0, len(data) - 1
+    best_ind = lo
+    while lo <= hi:
+        mid = lo + (hi - lo) // 2
+        if data[mid] < val:
+            lo = mid + 1
+        elif data[mid] > val:
+            hi = mid - 1
+        else:
+            best_ind = mid
+            break
+        # check if data[mid] is closer to val than data[best_ind]
+        if abs(data[mid] - val) < abs(data[best_ind] - val):
+            best_ind = mid
+    return best_ind
+
+
+def find_closest_version(versions, version):
+    vermap = {}
+    verkeys = []
+    for v in versions:
+        k = version_sort_key(v)
+        verkeys.append(k)
+        vermap[k] = v
+
+    i = binarySearch(sorted(verkeys), version_sort_key(version))
+    k = verkeys[i]
+    return vermap[k]
+
+
+def locate_and_load(name: str, lang: str):
+    prev_show_version = ""
+    current_version = ""
+    selected_path = ""
+    selected_data = ""
+    version_list = []
+    version_map = {}
+    file_pattern = f'{config.cmd_dir}/{lang}/{name}@*.json'
+    for path in glob.glob(file_pattern):
+        with open(path) as f:
+            data = json.load(f)
+        show_version = data.get('show_version', '')
+        if show_version == '':
+            continue
+        if show_version != prev_show_version:
+            prev_show_version = show_version
+            current_version = subprocess.getoutput(show_version)
+        for v in data['supported_versions']:
+            if current_version == v:
+                selected_path = path
+                selected_data = data
                 break
-    if path_found == '':
-        return
-    with open(path_found) as f:
-        data = json.load(f)
+            if v.find('*') >= 0:
+                if fnmatch.fnmatch(current_version, v):
+                    selected_path = path
+                    selected_data = data
+                    break
+            else:
+                version_list.append(v)
+                version_map[v] = {
+                    'data': data,
+                    'path': path
+                }
+        if selected_path != "":
+            break
+
+    if selected_path == "":
+        # no definition found
+        if len(version_list) == 0:
+            return None
+
+        if not re.match(r"[0-9][0-9]*\.[0-9][0-9]*", current_version):
+            v = find_closest_version(version_list, current_version)
+        else:
+            v = sorted(version_list)[-1]
+        selected_data = version_map[v]['data']
+        selected_path = version_map[v]['path']
+
+    symlink = f'{config.cmd_dir}/{lang}/{name}.json'
+    os.symlink(os.path.basename(selected_path), symlink)
+    return selected_data
+
+
+def load_command(name: str, lang: str):
+    basename = name.split()[0]
+    cmd_file = f'{basename}.json'
+    path = os.path.join(config.cmd_dir, lang, cmd_file)
+    if os.path.exists(path):
+        with open(path) as f:
+            data = json.load(f)
+    else:
+        data = locate_and_load(basename, lang)
+        if data is None:
+            return None
+
     cmd = Command()
     cmd.load(data)
 
     if cmd.name == name:
         return cmd
-    if cmd.subcommands is not None:
-        for sub in cmd.subcommands:
-            if sub.name == name:
-                return sub
     return None
-

@@ -12,12 +12,11 @@ _config_path = os.path.expandvars(_get_config_path())
 
 class Config:
     def __init__(self):
-        self.cmd_dir_user = os.path.expandvars('$HOME/.local/share/viscmd')
-        self.cmd_dir_sys = '/var/lib/viscmd'
+        self.cmd_dir = '/var/lib/viscmd'
         self.lang_prefer = 'en_US'
         self.lang_alt = 'zh_CN'
 
-        self._keys = ['cmd_dir_user', 'cmd_dir_sys', 'lang_prefer', 'lang_alt']
+        self._keys = ['cmd_dir_sys', 'lang_prefer', 'lang_alt']
 
     def load(self):
         with open(_config_path) as f:
@@ -26,8 +25,7 @@ class Config:
             v = data.get(key, '')
             if v != '':
                 setattr(self, key, v)
-        self.cmd_dir_user = os.path.expandvars(self.cmd_dir_user)
-        self.cmd_dir_sys = os.path.expandvars(self.cmd_dir_sys)
+        self.cmd_dir = os.path.expandvars(self.cmd_dir)
 
     def save(self):
         data = {}

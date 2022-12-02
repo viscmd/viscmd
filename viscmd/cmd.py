@@ -215,7 +215,7 @@ def locate_and_load(name: str, lang: str):
         if len(version_list) == 0:
             return None
 
-        if not re.match(r"[0-9][0-9]*\.[0-9][0-9]*", current_version):
+        if re.match(r"\d+\.\d+", current_version):
             v = find_closest_version(version_list, current_version)
         else:
             v = sorted(version_list)[-1]

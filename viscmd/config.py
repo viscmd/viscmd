@@ -16,7 +16,7 @@ class Config:
         self.lang_prefer = 'en_US'
         self.lang_alt = 'zh_CN'
 
-        self._keys = ['cmd_dir_sys', 'lang_prefer', 'lang_alt']
+        self._keys = ['cmd_dir', 'lang_prefer', 'lang_alt']
 
     def load(self):
         with open(_config_path) as f:

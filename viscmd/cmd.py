@@ -32,13 +32,13 @@ class Argument:
                 continue
             setattr(self, k, v)
 
-    def get_values(self):
+    def get_choices(self):
         if len(self.choices) > 0:
             return self.choices
 
-        get_values = all_get_values.get(self.type)
-        if get_values is not None:
-            return get_values()
+        get_choices = all_get_choices.get(self.type)
+        if get_choices is not None:
+            return get_choices()
 
         return []
 

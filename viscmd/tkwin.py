@@ -279,7 +279,7 @@ class MainWindow:
 
         frm = tk.Frame(parent)
 
-        values = ad.get_values()
+        values = ad.get_choices()
         if len(values) > 0:
             cb = ttk.Combobox(frm, values=values,
                               state="readonly", textvariable=ab.tk_value)

@@ -10,6 +10,7 @@ netns = 'netns'
 bridge = 'bridge'
 blockdev = 'blockdev'
 disk = 'disk'
+localaddr = 'localaddr'
 
 
 def list_netdev():
@@ -31,6 +32,8 @@ def list_blockdev():
 def list_disk():
     return subprocess.getoutput("lsblk --nodeps -n -p | awk '{print $1}'").splitlines()
 
+def list_localaddr():
+    return subprocess.getoutput("ip -o addr show scope global | awk '{print $4}' | awk -F / '{print $1}'").splitlines()
 
 all_get_choices = {
     netdev: list_netdev,
@@ -38,4 +41,5 @@ all_get_choices = {
     bridge: list_bridge,
     blockdev: list_blockdev,
     disk: list_disk,
+    localaddr: list_localaddr,
 }

@@ -18,7 +18,6 @@ chmod +x /bin/viscmd-completion-*.sh
 
 test -d /var/lib/viscmd || (mkdir /var/lib/viscmd && chown $SUDO_USER /var/lib/viscmd)
 
-[[ $- == *i* ]]
 ok=false
 if [ -e /etc/bash_completion.d/ ]; then
 	ln -sf /bin/viscmd-completion-bash.sh /etc/bash_completion.d/

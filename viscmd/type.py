@@ -14,11 +14,11 @@ localaddr = 'localaddr'
 
 
 def list_netdev():
-    return os.listdir('/sys/class/net')
+    return subprocess.getoutput("ip -o link | awk '{print $2}' | sed -e 's/@.*://' -e 's/://'")
 
 
 def list_netns():
-    return os.listdir('/run/netns')
+    return subprocess.getoutput("ip netns | awk '{print $1}'")
 
 
 def list_bridge():

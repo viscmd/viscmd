@@ -22,7 +22,7 @@ class Argument:
         self.choices = []
         self.default = None
 
-        self.repeat = False
+        self.repeatable = False
         self.section = ""
         self.help = ""
 
@@ -58,10 +58,7 @@ class ArgValue:
     def get_value_str(self):
         if self.value is None:
             return self.ad.variable  # use the name as variable value
-        if ' ' in self.value:
-            return "'" + self.value + "'"
-        else:
-            return self.value
+        return self.value
 
     def __str__(self):
         if self.ad.variable is None:

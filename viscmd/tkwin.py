@@ -1,4 +1,5 @@
 import functools
+import json
 import os
 import sys
 from difflib import SequenceMatcher
@@ -262,6 +263,18 @@ class MainWindow:
             ab.tk_value.set(filename)
 
     @staticmethod
+    def openfiles_btn_clicked(ab: ArgBinding):
+        filenames = filedialog.askopenfilenames(title=_TITLE)
+        if filenames:
+            ss = []
+            for filename in filenames:
+                s = json.dumps(filename)
+                if s.find(' ') == -1:
+                    s = s.strip('"')
+                ss.append(s)
+            ab.tk_value.set(' '.join(ss))
+
+    @staticmethod
     def savefile_btn_clicked(ab: ArgBinding):
         filename = filedialog.asksaveasfilename(title=_TITLE)
         if filename != '':
@@ -298,9 +311,13 @@ class MainWindow:
             else:
                 entry.insert(0, ad.variable)
 
-        if ad.type == type.file:
+        if ad.type == type.file and not ad.repeatable:
             btn = ttk.Button(frm, text='...', command=functools.partial(
                 self.openfile_btn_clicked, ab))
+            btn.pack(side=tk.LEFT, padx=5)
+        if ad.type == type.file and ad.repeatable:
+            btn = ttk.Button(frm, text='...', command=functools.partial(
+                self.openfiles_btn_clicked, ab))
             btn.pack(side=tk.LEFT, padx=5)
         if ad.type == type.savefile:
             btn = ttk.Button(frm, text='...', command=functools.partial(

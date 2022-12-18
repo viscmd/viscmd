@@ -332,7 +332,8 @@ class MainWindow:
 
     def create_tabs(self, tab_ctrl):
         self.ignore_value_change = True
-        for section, ads in self.cmd.sections.items():
+        for section in self.cmd.sections.keys():
+            ads = self.cmd.get_section(section)
             tab_scroller = VerticalScrolledFrame(tab_ctrl)
             self.tab_pages.append(tab_scroller)
             tab_ctrl.add(tab_scroller, text=section)

@@ -25,6 +25,7 @@ class Argument:
         self.repeatable = False
         self.section = ""
         self.help = ""
+        self.display_order = None
 
     def load(self, data: dict):
         for k, v in data.items():
@@ -67,6 +68,15 @@ class ArgValue:
             return self.get_value_str()
         else:
             return '%s%s%s' % (self.ad.keyword, self.ad.seperator, self.get_value_str())
+
+
+def get_args_ordered(args):
+    if args is None:
+        return []
+    ordered = [arg for arg in args if arg.display_order is not None]
+    ordered.sort(key=lambda arg: arg.display_order)
+    ordered.extend([arg for arg in args if arg.display_order is None])
+    return ordered
 
 
 class Command:
@@ -121,6 +131,12 @@ class Command:
         if self.values[av.ad] is None:
             return
         self.values[av.ad].pop(av, None)
+
+    def get_section(self, section_name):
+        args = self.sections.get(section_name)
+        if args is None:
+            return []
+        return get_args_ordered(args)
 
 
 _version_pattern_3 = re.compile(r"(\d+)\.(\d+)\.(\d+)")

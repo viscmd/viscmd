@@ -258,26 +258,46 @@ class MainWindow:
 
     @staticmethod
     def openfile_btn_clicked(ab: ArgBinding):
-        filename = filedialog.askopenfilename(title=_TITLE)
+        if len(ab.ad.file_extensions) > 0:
+            exts = ' '.join(ab.ad.file_extensions)
+            filetypes = [('Files', exts), ('All Files', '*')]
+        else:
+            filetypes = [('All Files', '*')]
+        filename = filedialog.askopenfilename(title=_TITLE, filetypes=filetypes)
         if filename != '':
+            if filename.find(' ') >= 0:
+                filename = '"' + filename + '"'
             ab.tk_value.set(filename)
 
     @staticmethod
     def openfiles_btn_clicked(ab: ArgBinding):
-        filenames = filedialog.askopenfilenames(title=_TITLE)
+        if len(ab.ad.file_extensions) > 0:
+            exts = ' '.join(ab.ad.file_extensions)
+            filetypes = [('Files', exts), ('All Files', '*')]
+        else:
+            filetypes = [('All Files', '*')]
+        filenames = filedialog.askopenfilenames(title=_TITLE, filetypes=filetypes)
         if filenames:
             ss = []
             for filename in filenames:
-                s = json.dumps(filename)
-                if s.find(' ') == -1:
-                    s = s.strip('"')
-                ss.append(s)
+                if filename.find(' ') >= 0:
+                    filename = '"' + filename + '"'
+                ss.append(filename)
             ab.tk_value.set(' '.join(ss))
 
     @staticmethod
     def savefile_btn_clicked(ab: ArgBinding):
-        filename = filedialog.asksaveasfilename(title=_TITLE)
+        kwargs = {}
+        if len(ab.ad.file_extensions) > 0:
+            exts = ' '.join(ab.ad.file_extensions)
+            kwargs['filetypes'] = [('Files', exts), ('All Files', '*')]
+            kwargs['defaultextension'] = ab.ad.file_extensions[0]
+        else:
+            kwargs['filetypes'] = [('All Files', '*')]
+        filename = filedialog.asksaveasfilename(title=_TITLE, **kwargs)
         if filename != '':
+            if filename.find(' ') >= 0:
+                filename = '"' + filename + '"'
             ab.tk_value.set(filename)
 
     @staticmethod

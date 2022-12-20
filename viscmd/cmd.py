@@ -26,6 +26,7 @@ class Argument:
         self.section = ""
         self.help = ""
         self.display_order = None
+        self.file_extensions = []
 
     def load(self, data: dict):
         for k, v in data.items():

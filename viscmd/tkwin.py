@@ -329,7 +329,7 @@ class MainWindow:
         frm = tk.Frame(parent)
 
         values = arg.get_choices()
-        if len(values) > 0:
+        if len(values) > 3:
             cb = ttk.Combobox(frm, values=values,
                               state="readonly", textvariable=ab.tk_value)
             cb.pack(side=tk.LEFT, fill=tk.X)
@@ -339,6 +339,10 @@ class MainWindow:
                 except IndexError:
                     n = 0
                 cb.current(n)
+        elif len(values) > 0:
+            for v in values:
+                rb = ttk.Radiobutton(frm, text=v, variable=ab.tk_value, value=v)
+                rb.pack(side=tk.LEFT, padx=5)
         else:
             entry = tk.Entry(parent, textvariable=ab.tk_value)
             entry.pack(side=tk.LEFT, fill=tk.X)

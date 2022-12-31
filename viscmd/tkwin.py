@@ -78,6 +78,7 @@ class VerticalScrolledFrame(ttk.Frame):
                 canvas.itemconfigure(interior_id, width=canvas.winfo_width())
 
         canvas.bind('<Configure>', _configure_canvas)
+        self.canvas = canvas
 
 
 # Combobox
@@ -149,7 +150,7 @@ class MainWindow:
         self.root_win: tk.Tk = None
         self.cmd_box: ttk.Combobox = None
         self.cmd_box_value = None
-        self.tab_ctrl = None
+        self.tab_ctrl: ttk.Notebook = None
         self.tab_pages = []
         self.main_cmd: Command = None
         self.cmd: Command = None
@@ -433,12 +434,27 @@ class MainWindow:
                     ttk.Label(tab_content, text=arg.help, wraplength=800, justify=tk.LEFT) \
                         .pack(anchor=tk.W, fill=tk.X, padx=3)
 
+    def on_mouse_wheel(self, event):
+        tab_no = self.tab_ctrl.index(self.tab_ctrl.select())
+        tab: VerticalScrolledFrame = self.tab_pages[tab_no]
+        if event.num == 5 or event.delta == -120:  # wheel down
+            tab.canvas.yview_scroll(1, "units")
+        if event.num == 4 or event.delta == 120:  # wheel up
+            tab.canvas.yview_scroll(-1, "units")
+
     def show(self):
         self.root_win = tk.Tk()
         self.root_win.geometry('1000x600')
         self.root_win.title(_TITLE)
         if os.path.exists(_ICON):
             self.root_win.iconphoto(False, tk.PhotoImage(file=_ICON))
+
+        # with Windows OS
+        self.root_win.bind("<MouseWheel>", self.on_mouse_wheel)
+        self.root_win.bind("<MouseWheel>", self.on_mouse_wheel)
+        # with Linux OS
+        self.root_win.bind("<Button-4>", self.on_mouse_wheel)
+        self.root_win.bind("<Button-5>", self.on_mouse_wheel)
 
         main_frm = ttk.Frame(self.root_win, padding=10)
         main_frm.pack(fill=tk.BOTH, expand=1)

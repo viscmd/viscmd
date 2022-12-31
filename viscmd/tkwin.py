@@ -202,7 +202,7 @@ class MainWindow:
         if not ab.checked.get():
             ab.checked.set(True)
         # to update the cmd box
-        self.arg_checked(ab)
+        self.arg_checked(ab, None, None, None)
 
     def cmd_box_value_changed(self, name, index, mode):
         line = self.cmd_box.get()

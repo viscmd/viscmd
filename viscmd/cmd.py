@@ -1,5 +1,6 @@
 import fnmatch
 import glob
+import itertools
 import json
 import os
 import re
@@ -27,12 +28,22 @@ class Argument:
         self.help = ""
         self.display_order = None
         self.file_extensions = []
+        self.one_of = []
+        self.args = []
 
     def load(self, data: dict):
         for k, v in data.items():
             if k == '' or k.startswith('_'):
                 continue
-            setattr(self, k, v)
+            if k == 'one_of' or k == 'args':
+                args = []
+                for arg_dict in v:
+                    arg = Argument()
+                    arg.load(arg_dict)
+                    args.append(arg)
+                setattr(self, k, args)
+            else:
+                setattr(self, k, v)
 
     def get_choices(self):
         if len(self.choices) > 0:
@@ -47,9 +58,20 @@ class Argument:
 
 class ArgValue:
     def __init__(self):
-        self.ad: Argument = None
+        self.arg: Argument = None
         self.value = None
         self.checked: bool = False
+        self.values = {}
+
+    def new_sub_arg_value(self, arg: Argument):
+        values = self.values
+        if arg not in values:
+            values[arg] = OrderedDict()
+
+        av = ArgValue()
+        av.arg = arg
+        values[arg][av] = av
+        return av
 
     def update_status(self, checked: bool):
         self.checked = checked
@@ -57,18 +79,30 @@ class ArgValue:
     def set_value(self, value):
         self.value = value
 
-    def get_value_str(self):
-        if self.value is None:
-            return self.ad.variable  # use the name as variable value
-        return self.value
-
     def __str__(self):
-        if self.ad.variable is None:
-            return self.ad.keyword
-        if self.ad.keyword == '':
-            return self.get_value_str()
-        else:
-            return '%s%s%s' % (self.ad.keyword, self.ad.seperator, self.get_value_str())
+        s = self.arg.keyword
+        if self.arg.variable != "":
+            if s != '':
+                s += self.arg.seperator
+            if self.value is not None:
+                s += self.value
+            else:
+                s += self.arg.variable  # use the name as variable value
+        elif self.arg.args or self.arg.one_of:
+            if s != '':
+                s += self.arg.seperator
+            ss = []
+            for arg in itertools.chain(self.arg.args, self.arg.one_of):
+                avs: OrderedDict = self.values.get(arg)
+                if avs is None:
+                    continue
+                av: ArgValue
+                for av in avs.values():
+                    if not av.checked:
+                        continue
+                    ss.append(str(av))
+            s += ' '.join(ss)
+        return s
 
 
 def get_args_ordered(args):
@@ -92,12 +126,12 @@ class Command:
         self.name = data['command']
         if data.get('arguments') is not None:
             for a in data['arguments']:
-                ad = Argument()
-                ad.load(a)
-                self.args.append(ad)
-                section = self.sections.get(ad.section, [])
-                section.append(ad)
-                self.sections.setdefault(ad.section, section)
+                arg = Argument()
+                arg.load(a)
+                self.args.append(arg)
+                section = self.sections.get(arg.section, [])
+                section.append(arg)
+                self.sections.setdefault(arg.section, section)
         if data.get('subcommands') is not None:
             for sub in data['subcommands']:
                 c = Command()
@@ -109,8 +143,8 @@ class Command:
 
     def get_arg_line(self) -> str:
         ss = []
-        for ad in self.args:
-            avs: OrderedDict = self.values.get(ad)
+        for arg in self.args:
+            avs: OrderedDict = self.values.get(arg)
             if avs is None:
                 continue
             av: ArgValue
@@ -120,18 +154,15 @@ class Command:
                 ss.append(str(av))
         return ' '.join(ss)
 
-    def new_arg_value(self, ad: Argument) -> ArgValue:
-        if ad not in self.values:
-            self.values[ad] = OrderedDict()
-        av = ArgValue()
-        av.ad = ad
-        self.values[ad][av] = av
-        return av
+    def new_arg_value(self, arg: Argument) -> ArgValue:
+        values = self.values
+        if arg not in values:
+            values[arg] = OrderedDict()
 
-    def del_arg_value(self, av: ArgValue):
-        if self.values[av.ad] is None:
-            return
-        self.values[av.ad].pop(av, None)
+        av = ArgValue()
+        av.arg = arg
+        values[arg][av] = av
+        return av
 
     def get_section(self, section_name):
         args = self.sections.get(section_name)

@@ -20,10 +20,12 @@ _ICON = '/usr/share/icons/viscmd.png'
 
 class ArgBinding:
     def __init__(self):
-        self.ad: Argument = None
-        self.av: ArgValue = None
+        self.arg: Argument = None
+        self.arg_value: ArgValue = None
         self.checked: tk.BooleanVar = None
         self.tk_value = None
+        self.parent: ArgBinding = None
+        self.children = []
 
 
 # VerticalScrolledFrame
@@ -174,9 +176,22 @@ class MainWindow:
             else:  # run mode
                 xterm.run(cmdline)
 
-    def arg_checked(self, ab: ArgBinding):
-        ab.av.update_status(ab.checked.get())
-        ab.av.set_value(ab.tk_value.get())
+    def set_parent_checked(self, ab):
+        if ab.parent is not None:
+            ab.parent.checked.set(True)
+            self.set_parent_checked(ab.parent)
+
+    def arg_checked(self, ab: ArgBinding, name, index, mode):
+        if ab.checked.get() and ab.parent is not None \
+                and ab in ab.parent.children and len(ab.parent.arg.one_of) > 0:  # is in the one_of list
+            sibling: ArgBinding
+            for sibling in ab.parent.children:
+                if sibling != ab:
+                    sibling.checked.set(False)
+        ab.arg_value.update_status(ab.checked.get())
+        ab.arg_value.set_value(ab.tk_value.get())
+        if ab.checked.get() and not self.ignore_value_change:
+            self.set_parent_checked(ab)
         s = self.cmd.get_cmd_line()
         self.cmd_box.set(s)
 
@@ -258,8 +273,8 @@ class MainWindow:
 
     @staticmethod
     def openfile_btn_clicked(ab: ArgBinding):
-        if len(ab.ad.file_extensions) > 0:
-            exts = ' '.join(ab.ad.file_extensions)
+        if len(ab.arg.file_extensions) > 0:
+            exts = ' '.join(ab.arg.file_extensions)
             filetypes = [('Files', exts), ('All Files', '*')]
         else:
             filetypes = [('All Files', '*')]
@@ -271,8 +286,8 @@ class MainWindow:
 
     @staticmethod
     def openfiles_btn_clicked(ab: ArgBinding):
-        if len(ab.ad.file_extensions) > 0:
-            exts = ' '.join(ab.ad.file_extensions)
+        if len(ab.arg.file_extensions) > 0:
+            exts = ' '.join(ab.arg.file_extensions)
             filetypes = [('Files', exts), ('All Files', '*')]
         else:
             filetypes = [('All Files', '*')]
@@ -288,10 +303,10 @@ class MainWindow:
     @staticmethod
     def savefile_btn_clicked(ab: ArgBinding):
         kwargs = {}
-        if len(ab.ad.file_extensions) > 0:
-            exts = ' '.join(ab.ad.file_extensions)
+        if len(ab.arg.file_extensions) > 0:
+            exts = ' '.join(ab.arg.file_extensions)
             kwargs['filetypes'] = [('Files', exts), ('All Files', '*')]
-            kwargs['defaultextension'] = ab.ad.file_extensions[0]
+            kwargs['defaultextension'] = ab.arg.file_extensions[0]
         else:
             kwargs['filetypes'] = [('All Files', '*')]
         filename = filedialog.asksaveasfilename(title=_TITLE, **kwargs)
@@ -307,43 +322,43 @@ class MainWindow:
             ab.tk_value.set(filename)
 
     def create_var_widget(self, ab: ArgBinding, parent):
-        ad = ab.ad
+        arg = ab.arg
         ab.tk_value.trace("w", functools.partial(self.arg_value_changed, ab))
 
         frm = tk.Frame(parent)
 
-        values = ad.get_choices()
+        values = arg.get_choices()
         if len(values) > 0:
             cb = ttk.Combobox(frm, values=values,
                               state="readonly", textvariable=ab.tk_value)
             cb.pack(side=tk.LEFT, fill=tk.X)
-            if ad.default is not None:
+            if arg.default is not None:
                 try:
-                    n = ad.choices.index(ad.default)
+                    n = arg.choices.index(arg.default)
                 except IndexError:
                     n = 0
                 cb.current(n)
         else:
             entry = tk.Entry(parent, textvariable=ab.tk_value)
             entry.pack(side=tk.LEFT, fill=tk.X)
-            if ad.default is not None:
-                entry.insert(0, ad.default)
+            if arg.default is not None:
+                entry.insert(0, arg.default)
             else:
-                entry.insert(0, ad.variable)
+                entry.insert(0, arg.variable)
 
-        if ad.type == type.file and not ad.repeatable:
+        if arg.type == type.file and not arg.repeatable:
             btn = ttk.Button(frm, text='...', command=functools.partial(
                 self.openfile_btn_clicked, ab))
             btn.pack(side=tk.LEFT, padx=5)
-        if ad.type == type.file and ad.repeatable:
+        if arg.type == type.file and arg.repeatable:
             btn = ttk.Button(frm, text='...', command=functools.partial(
                 self.openfiles_btn_clicked, ab))
             btn.pack(side=tk.LEFT, padx=5)
-        if ad.type == type.savefile:
+        if arg.type == type.savefile:
             btn = ttk.Button(frm, text='...', command=functools.partial(
                 self.savefile_btn_clicked, ab))
             btn.pack(side=tk.LEFT, padx=5)
-        if ad.type == type.directory:
+        if arg.type == type.directory:
             btn = ttk.Button(frm, text='...', command=functools.partial(
                 self.dir_btn_clicked, ab))
             btn.pack(side=tk.LEFT, padx=5)
@@ -359,41 +374,64 @@ class MainWindow:
             tab_ctrl.add(tab_scroller, text=section)
             tab_content = tab_scroller.interior
 
-            for i in range(len(ads)):
-                ad: Argument = ads[i]
+            self.create_arg_widgets(tab_content, ads, None, 0)
 
-                if ad.alias != "":
-                    text = "%s (%s)" % (ad.keyword, ad.alias)
+        self.ignore_value_change = False
+
+    def create_arg_widgets(self, tab_content, ads, parent: ArgBinding, indent: int):
+        for i in range(len(ads)):
+            arg: Argument = ads[i]
+
+            if len(arg.args) > 0 or len(arg.one_of) > 0:
+                if arg.help != "":
+                    text = arg.help
                 else:
-                    text = ad.keyword
-                    if text == '' and ad.variable != '':
-                        text = '(%s)' % ad.variable
+                    text = "(no help text)"
+            else:
+                if arg.alias != "":
+                    text = "%s (%s)" % (arg.keyword, arg.alias)
+                else:
+                    text = arg.keyword
+                    if text == '' and arg.variable != '':
+                        text = '(%s)' % arg.variable
 
                 text = "%s   " % text
 
-                ab = ArgBinding()
-                ab.ad = ad
-                ab.av = self.cmd.new_arg_value(ad)
-                ab.tk_value = tk.StringVar()
-                ab.checked = tk.BooleanVar()
-                if ad.required:
-                    ab.checked.set(True)
+            ab = ArgBinding()
+            ab.arg = arg
 
-                arg_frm = ttk.Frame(tab_content)
-                arg_frm.pack(anchor=tk.W, fill=tk.X, padx=3)
+            ab.tk_value = tk.StringVar()
+            ab.checked = tk.BooleanVar()
+            ab.checked.trace_add("write", functools.partial(self.arg_checked, ab))
 
-                btn = ttk.Checkbutton(arg_frm, text=text, variable=ab.checked, onvalue=True, offvalue=False,
-                                      command=functools.partial(self.arg_checked, ab))
-                btn.pack(side=tk.LEFT)
-                if ad.variable != "":
+            if parent:
+                ab.arg_value = parent.arg_value.new_sub_arg_value(arg)
+                ab.parent = parent
+                parent.children.append(ab)
+            else:
+                ab.arg_value = self.cmd.new_arg_value(arg)
+
+            if arg.required:
+                ab.checked.set(True)
+
+            arg_frm = ttk.Frame(tab_content)
+            arg_frm.pack(anchor=tk.W, fill=tk.X, padx=3+indent*20)
+
+            btn = ttk.Checkbutton(arg_frm, text=text, variable=ab.checked, onvalue=True, offvalue=False)
+            btn.pack(side=tk.LEFT)
+
+            if len(arg.args) > 0:
+                self.create_arg_widgets(tab_content, arg.args, ab, indent + 1)
+            elif len(arg.one_of) > 0:
+                self.create_arg_widgets(tab_content, arg.one_of, ab, indent + 1)
+            else:
+                if arg.variable != "":
                     w = self.create_var_widget(ab, arg_frm)
                     w.pack(side=tk.LEFT)
 
-                if ad.help != "":
-                    ttk.Label(tab_content, text=ad.help, wraplength=800, justify=tk.LEFT) \
+                if arg.help != "":
+                    ttk.Label(tab_content, text=arg.help, wraplength=800, justify=tk.LEFT) \
                         .pack(anchor=tk.W, fill=tk.X, padx=3)
-
-        self.ignore_value_change = False
 
     def show(self):
         self.root_win = tk.Tk()

@@ -24,7 +24,7 @@ class Argument:
         self.default = None
 
         self.repeatable = False
-        self.section = ""
+        self.group = ""
         self.help = ""
         self.display_order = None
         self.file_extensions = []
@@ -120,7 +120,7 @@ class Command:
         self.args = []  # argument definitions
         self.values = {}  # argument values
         self.subcommands = OrderedDict()
-        self.sections = OrderedDict()
+        self.groups = OrderedDict()
 
     def load(self, data):
         self.name = data['command']
@@ -129,9 +129,9 @@ class Command:
                 arg = Argument()
                 arg.load(a)
                 self.args.append(arg)
-                section = self.sections.get(arg.section, [])
-                section.append(arg)
-                self.sections.setdefault(arg.section, section)
+                group = self.groups.get(arg.group, [])
+                group.append(arg)
+                self.groups.setdefault(arg.group, group)
         if data.get('subcommands') is not None:
             for sub in data['subcommands']:
                 c = Command()
@@ -165,7 +165,7 @@ class Command:
         return av
 
     def get_section(self, section_name):
-        args = self.sections.get(section_name)
+        args = self.groups.get(section_name)
         if args is None:
             return []
         return get_args_ordered(args)

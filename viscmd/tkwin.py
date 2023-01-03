@@ -372,11 +372,11 @@ class MainWindow:
 
     def create_tabs(self, tab_ctrl):
         self.ignore_value_change = True
-        for section in self.cmd.sections.keys():
-            ads = self.cmd.get_section(section)
+        for group in self.cmd.groups.keys():
+            ads = self.cmd.get_section(group)
             tab_scroller = VerticalScrolledFrame(tab_ctrl)
             self.tab_pages.append(tab_scroller)
-            tab_ctrl.add(tab_scroller, text=section)
+            tab_ctrl.add(tab_scroller, text=group)
             tab_content = tab_scroller.interior
 
             self.create_arg_widgets(tab_content, ads, None, 0)

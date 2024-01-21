@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=0.9.7
+Type=Application
+Name=Visual Command
+Name[zh_CN]=可视命令
+Exec=viscmd
+Icon=viscmd
+Terminal=false
+Categories=Graphics;2DGraphics;
